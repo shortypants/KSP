@@ -1,0 +1,45 @@
+clear all, clc , close all
+
+g=9.81;
+k=0.5;%coefficient of drag for a cylinder
+thrust = 900000; %thrust of rocket in N, constant 100%
+
+
+answerVec = [];%the answer: position vector w.r.t. time
+beginAlt = [];%the calculated beginning altitude of the suicide burn
+
+for alt=0:1:10000 % "alt" is the altitude at which you want to start the suicide burn in (m)
+    cond = [40000 alt -200];    %starting conditions of the ODE: (starting mass, starting altitude, vertical velocity)
+    tspan = [0:0.1:15]; %timespan of the ODE
+    funct = @(t,Y) [-50; Y(3); (((-k.*(Y(3)).*abs(Y(3)))./Y(1))-g)+(thrust./Y(1))]; %the coupled differential equations:(dm/dt (= constant), velocity, acceleration in y direction) The acceleration in y direction is calculated using Newton's laws.
+    [t,Y] = ode45(funct, tspan, cond);  %ODE45 function call
+    minAlt = min(abs(Y(:,2)));  
+    minSpeed = min(abs(Y(:,3)));
+    if ((minAlt<5) && (minSpeed<5)) %checks whether the altitude AND the velocity are close to 0 for a given beginning height of "alt"
+        answerVec = [t,Y];
+        beginAlt = alt;
+    end
+end
+
+cond = [40000 beginAlt -200];%re-calculate the ode with the found starting altitude in this section(if there is a solution)
+tspan = [0:0.1:15];
+funct = @(t,Y) [-50; Y(3); (((-k.*(Y(3)).*abs(Y(3)))./Y(1))-g)+(thrust./Y(1))];
+[t,Y] = ode45(funct, tspan, cond);
+
+%reasons for no solution may be the following: 
+%step in for loop is too small (1m currently),
+%starting altitude is too low
+%thrust of engine is not sufficient to decelerate the spacecraft
+
+% Top plot
+nexttile
+plot(t,Y(:,2))
+xlabel('time(s)')
+ylabel('y(m)')
+
+% Bottom plot
+nexttile
+plot(t,Y(:,3))
+xlabel('time(s)')
+ylabel('speed(m/s)')
+
